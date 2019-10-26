@@ -10,6 +10,7 @@ import numpy as np
 import random
 import timeit
 import os
+import math
 
 
 class Waveminionet(Model):
@@ -49,6 +50,8 @@ class Waveminionet(Model):
                 # add additional code for pair (either CMI or MI)
                 # (just once, thus use mi_fwd flag)
                 ninp += self.frontend.emb_dim
+            if minion_cfg['name'] == "sort":
+                ninp *= 4
             minion_cfg['num_inputs'] = ninp
             minion = minion_maker(minion_cfg)
             self.minions.append(minion)
@@ -117,6 +120,15 @@ class Waveminionet(Model):
                 h = h
             outs[minion.name] = y
         return outs, h
+
+    def get_perm_label(self, x, maxlen=4):
+        total = 0
+        all_ind = set(range(maxlen))
+        for j in range(maxlen):
+          curr_ind = list(all_ind).index(x[j])
+          total += curr_ind*math.factorial(maxlen-j-1)
+          all_ind.remove(x[j])    
+        return total
 
     def join_skip(self, x, skip):
         if skip is None:
@@ -359,6 +371,16 @@ class Waveminionet(Model):
                                                      torch.zeros(bsz, 1, slen)),
                                                     dim=0)
 
+                    elif min_name == "sort":
+                            h_perm = []
+                            perm_list = []
+                            for j in range(0,h.shape[2],4):
+                              perm_list.append(torch.randperm(4))
+                              h_perm.append(h[:,:,perm_list[-1] + j].view(h.shape[0],-1))
+                            h_perm = torch.stack(h_perm, dim=-1)
+                            y = minion(h_perm).view(-1, 24)
+                            sort_labels = torch.LongTensor([self.get_perm_label(x.tolist()) for x in perm_list])
+                            batch['sort'] = sort_labels.unsqueeze(0).expand(h.shape[0],-1).reshape(-1)
                     else:
                         if self.minions[mi - 1].skip:
                             y, h_ = minion(self.join_skip(h, skip_acum))
@@ -378,6 +400,7 @@ class Waveminionet(Model):
                                                       torch.zeros(bsz, 1,
                                                                   slen)),
                                                      dim=0)
+  
                     min_h[min_name] = y
 
                 if epoch_ + 1 >= warmup_epoch and hasattr(self, 'z_minion'):
@@ -675,6 +698,16 @@ class Waveminionet(Model):
                         batch[min_name] = torch.cat((torch.ones(bsz, 1, slen),
                                                      torch.zeros(bsz, 1, slen)),
                                                     dim=0)
+                    elif min_name == "sort":
+                            h_perm = []
+                            perm_list = []
+                            for j in range(0,h.shape[2],4):
+                              perm_list.append(torch.randperm(4))
+                              h_perm.append(h[:,:,perm_list[-1] + j].view(h.shape[0],-1))
+                            h_perm = torch.stack(h_perm, dim=-1)
+                            y = minion(h_perm).view(-1, 24)
+                            sort_labels = torch.LongTensor([self.get_perm_label(x.tolist()) for x in perm_list])
+                            batch['sort'] = sort_labels.unsqueeze(0).expand(h.shape[0],-1).reshape(-1)
                     else:
                         if self.minions[mi - 1].skip:
                             y, h_ = minion(self.join_skip(h, skip_acum))

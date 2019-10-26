@@ -50,6 +50,8 @@ def make_transforms(opts, minions_cfg):
             trans.append(Prosody(hop=160, win=400))
         elif name == 'chunk' or name == 'cchunk':
             znorm = True
+        elif name == "sort":
+            znorm = True
         else:
             raise TypeError('Unrecognized module \"{}\"'
                             'whilst building transfromations'.format(name))
