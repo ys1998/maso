@@ -1,4 +1,4 @@
-# maso
+# maso [WIP]
 This repository contains the code for our ASR project on self-supervised representation learning for raw audio. 
 
 ## Introduction
