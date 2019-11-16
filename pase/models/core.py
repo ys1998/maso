@@ -43,15 +43,15 @@ class Waveminionet(Model):
         # -------- MINION STACK --------
         self.minions = nn.ModuleList()
         self.mi_fwd = False
-        ninp = self.frontend.emb_dim
         self.min2idx = {}
         for minion_cfg in minions_cfg:
+            ninp = self.frontend.emb_dim
             if 'mi' in minion_cfg['name'] and not self.mi_fwd:
                 # add additional code for pair (either CMI or MI)
                 # (just once, thus use mi_fwd flag)
                 ninp += self.frontend.emb_dim
             if minion_cfg['name'] == "sort":
-                ninp *= 4
+                ninp = 4 * self.frontend.emb_dim
             minion_cfg['num_inputs'] = ninp
             minion = minion_maker(minion_cfg)
             self.minions.append(minion)
@@ -370,17 +370,30 @@ class Waveminionet(Model):
                         batch[min_name] = torch.cat((torch.ones(bsz, 1, slen),
                                                      torch.zeros(bsz, 1, slen)),
                                                     dim=0)
-
+                    #############################################################################################
+                    #                                           SORTING                                         #
+                    #############################################################################################
                     elif min_name == "sort":
-                            h_perm = []
-                            perm_list = []
-                            for j in range(0,h.shape[2],4):
-                              perm_list.append(torch.randperm(4))
-                              h_perm.append(h[:,:,perm_list[-1] + j].view(h.shape[0],-1))
-                            h_perm = torch.stack(h_perm, dim=-1)
-                            y = minion(h_perm).view(-1, 24)
-                            sort_labels = torch.LongTensor([self.get_perm_label(x.tolist()) for x in perm_list])
-                            batch['sort'] = sort_labels.unsqueeze(0).expand(h.shape[0],-1).reshape(-1)
+                        h_perm = []
+                        perm_list = []
+                        for j in range(0,h.shape[2],4):
+                            perm_list.append(torch.randperm(4))
+                            h_perm.append(h[:,:,perm_list[-1] + j].view(h.shape[0],-1))
+                        h_perm = torch.stack(h_perm, dim=-1)
+                        y = minion(h_perm).view(-1, 24)
+                        sort_labels = torch.LongTensor([self.get_perm_label(x.tolist()) for x in perm_list])
+                        batch['sort'] = sort_labels.unsqueeze(0).expand(h.shape[0],-1).reshape(-1)
+
+                    #############################################################################################
+                    #                                           MASKING                                         #
+                    #############################################################################################
+                    elif min_name == 'mask':
+                        # random mask
+                        mask = (torch.rand([h.size(0), 1, h.size(2)]) < 0.2).float() # hardcoded for now
+                        h_mask = mask * h
+                        y = minion(h_mask)
+                        batch['mask'] = batch['chunk']
+
                     else:
                         if self.minions[mi - 1].skip:
                             y, h_ = minion(self.join_skip(h, skip_acum))
@@ -698,16 +711,30 @@ class Waveminionet(Model):
                         batch[min_name] = torch.cat((torch.ones(bsz, 1, slen),
                                                      torch.zeros(bsz, 1, slen)),
                                                     dim=0)
+                    #############################################################################################
+                    #                                           SORTING                                         #
+                    #############################################################################################
                     elif min_name == "sort":
-                            h_perm = []
-                            perm_list = []
-                            for j in range(0,h.shape[2],4):
-                              perm_list.append(torch.randperm(4))
-                              h_perm.append(h[:,:,perm_list[-1] + j].view(h.shape[0],-1))
-                            h_perm = torch.stack(h_perm, dim=-1)
-                            y = minion(h_perm).view(-1, 24)
-                            sort_labels = torch.LongTensor([self.get_perm_label(x.tolist()) for x in perm_list])
-                            batch['sort'] = sort_labels.unsqueeze(0).expand(h.shape[0],-1).reshape(-1)
+                        h_perm = []
+                        perm_list = []
+                        for j in range(0,h.shape[2],4):
+                            perm_list.append(torch.randperm(4))
+                            h_perm.append(h[:,:,perm_list[-1] + j].view(h.shape[0],-1))
+                        h_perm = torch.stack(h_perm, dim=-1)
+                        y = minion(h_perm).view(-1, 24)
+                        sort_labels = torch.LongTensor([self.get_perm_label(x.tolist()) for x in perm_list])
+                        batch['sort'] = sort_labels.unsqueeze(0).expand(h.shape[0],-1).reshape(-1)
+
+                    #############################################################################################
+                    #                                           MASKING                                         #
+                    #############################################################################################
+                    elif min_name == 'mask':
+                        # random mask
+                        mask = (torch.rand([h.size(0), 1, h.size(2)]) < 0.2).float() # hardcoded for now
+                        h_mask = mask * h
+                        y = minion(h_mask)
+                        batch['mask'] = batch['chunk']
+
                     else:
                         if self.minions[mi - 1].skip:
                             y, h_ = minion(self.join_skip(h, skip_acum))
