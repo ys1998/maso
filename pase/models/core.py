@@ -390,7 +390,7 @@ class Waveminionet(Model):
                     elif min_name == 'mask':
                         # random mask
                         mask = (torch.rand([h.size(0), 1, h.size(2)]) < 0.2).float() # hardcoded for now
-                        h_mask = mask * h
+                        h_mask = mask.to(h.device) * h
                         y = minion(h_mask)
                         batch['mask'] = batch['chunk']
 
@@ -731,7 +731,7 @@ class Waveminionet(Model):
                     elif min_name == 'mask':
                         # random mask
                         mask = (torch.rand([h.size(0), 1, h.size(2)]) < 0.2).float() # hardcoded for now
-                        h_mask = mask * h
+                        h_mask = mask.to(h.device) * h
                         y = minion(h_mask)
                         batch['mask'] = batch['chunk']
 
