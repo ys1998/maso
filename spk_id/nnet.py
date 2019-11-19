@@ -525,7 +525,7 @@ def eval_epoch(dloader_, model, epoch, log_freq=1, writer=None, device='cpu',
                 log_str += 'mbtime: {:.3f} s'.format(np.mean(timings))
                 print(log_str)
         mloss = np.mean(eval_losses)
-        macc = np.mean([x.numpy() for x in eval_accs])
+        macc = np.mean([x.cpu().numpy() for x in eval_accs])
         if writer is not None:
             writer.add_scalar('{}/loss'.format(key), mloss,
                               epoch)

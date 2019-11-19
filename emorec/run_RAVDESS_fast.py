@@ -27,7 +27,8 @@ def get_freer_gpu(trials=10):
     for j in range(trials):
          os.system('nvidia-smi -q -d Memory |grep -A4 GPU|grep Free >tmp')
          memory_available = [int(x.split()[2]) for x in open('tmp', 'r').readlines()]
-         dev_ = torch.device('cuda:'+str(np.argmax(memory_available)))
+         dev_ = torch.device('cuda')
+         #dev_ = torch.device('cuda:'+str(np.argmax(memory_available)))
          try:
             a = torch.rand(1).cuda(dev_)
             return dev_
@@ -61,7 +62,7 @@ dev_lst = [line.rstrip('\n') for line in open(dev_lst_file)]
 
 
 # Training parameters
-N_epochs=15
+N_epochs=150
 seed=1234
 batch_size=128
 halving_factor=0.8
@@ -71,7 +72,7 @@ right=0
 
 # Neural network parameters
 options={}
-options['dnn_lay']='1024,4'
+options['dnn_lay']='1024,8'
 options['dnn_drop']='0.15,0.0'
 options['dnn_use_batchnorm']='False,False'
 options['dnn_use_laynorm']='True,False'
@@ -92,9 +93,9 @@ text_file=open(output_file, "w")
 
 # Loading pase
 pase = wf_builder(pase_cfg)
-pase.load_pretrained(pase_model, load_last=True, verbose=False)
+#pase.load_pretrained(pase_model, load_last=True, verbose=False)
 pase.to(device)
-pase.eval()
+pase.train()
 
 # reading the training signals
 print("Waveform reading...")
@@ -123,8 +124,8 @@ for wav_file in dev_lst:
 print('Computing PASE features...')
 fea_pase={}
 for snt_id in fea.keys():
-    pase.eval()
-    fea_pase[snt_id]=pase(fea[snt_id]).to('cpu').detach()
+    pase.train()
+    fea_pase[snt_id]=pase(fea[snt_id])
     fea_pase[snt_id]=fea_pase[snt_id].view(fea_pase[snt_id].shape[1],fea_pase[snt_id].shape[2]).transpose(0,1)
 
 inp_dim=fea_pase[snt_id].shape[1]*(left+right+1)
@@ -146,7 +147,7 @@ nnet.to(device)
 cost=nn.NLLLoss()
 
 # Optimizer initialization
-optimizer = optim.SGD(nnet.parameters(), lr=lr, momentum=0.0)
+optimizer = optim.SGD(list(nnet.parameters()) + list(pase.parameters()), lr=lr, momentum=0.0)
 
 # Seeds initialization
 np.random.seed(seed)
@@ -269,7 +270,7 @@ for ep in range(N_epochs):
             
              fea_dev_norm=(fea_pase_dev[dev_snt]-mean)/std
              out_dev=nnet(fea_dev_norm)
-             lab_snt=torch.zeros(fea_pase_dev[dev_snt].shape[0])+lab[dev_snt.split('_')[0]]
+             lab_snt=torch.zeros(fea_pase_dev[dev_snt].shape[0]) + int(dev_snt.split('_')[-1].split('-')[2]) - 1 
              lab_snt=lab_snt.long().to(device)
              loss_dev=cost(out_dev,lab_snt)
              

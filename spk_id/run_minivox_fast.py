@@ -65,7 +65,7 @@ tr_lst = [line.rstrip('\n') for line in open(tr_lst_file)]
 dev_lst = [line.rstrip('\n') for line in open(dev_lst_file)]
 
 # Training parameters
-N_epochs=24
+N_epochs=150
 seed=1234
 batch_size=128
 halving_factor=1.0
