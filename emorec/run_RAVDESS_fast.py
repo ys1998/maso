@@ -43,7 +43,6 @@ pase_model=sys.argv[2] # e.g, '../PASE.ckpt'
 data_folder=sys.argv[3] # eg. '/home/mirco/Dataset/IEMOCAP_ahsn_leave-two-speaker-out'
 output_file=sys.argv[4] # e.g., 'iemocap_exp.res'
 
-
 # Label dict
 # lab={}
 # lab['ang']=0
@@ -51,15 +50,12 @@ output_file=sys.argv[4] # e.g., 'iemocap_exp.res'
 # lab['neu']=2
 # lab['sad']=3
 
-
-
 # File list for IEMOCAP
 tr_lst_file='tr_lst.txt'
 dev_lst_file='te_lst.txt'
 
 tr_lst = [line.rstrip('\n') for line in open(tr_lst_file)]
 dev_lst = [line.rstrip('\n') for line in open(dev_lst_file)]
-
 
 # Training parameters
 N_epochs=150
@@ -136,14 +132,9 @@ for snt_id in fea_dev.keys():
     fea_pase_dev[snt_id]=pase(fea_dev[snt_id]).detach()
     fea_pase_dev[snt_id]=fea_pase_dev[snt_id].view(fea_pase_dev[snt_id].shape[1],fea_pase_dev[snt_id].shape[2]).transpose(0,1)
 
-
-  
-
 # Network initialization
 nnet=MLP(options,inp_dim)
-
 nnet.to(device)
-
 cost=nn.NLLLoss()
 
 # Optimizer initialization
@@ -160,16 +151,15 @@ lab_lst=[]
 print("Data Preparation...")
 for snt in fea_pase.keys():
         fea_lst.append(fea_pase[snt])
-        lab_lst.append(np.zeros(fea_pase[snt].shape[0])+int(snt.split('_')[-1].split('-')[2])-1)
-
+        lab_lst.append(torch.zeros(fea_pase[snt].shape[0])+int(snt.split('_')[-1].split('-')[2])-1)
     
 # feature matrix (training)
-fea_conc=np.concatenate(fea_lst)
+fea_conc=torch.cat(fea_lst)
 fea_conc=context_window(fea_conc,left,right)
 
 # feature normalization
-mean=np.mean(fea_conc,axis=0)
-std=np.std(fea_conc,axis=0)
+mean=torch.mean(fea_conc,axis=0)
+std=torch.std(fea_conc,axis=0)
 
 # normalization
 fea_conc=(fea_conc-mean)/std
@@ -178,7 +168,7 @@ mean=torch.from_numpy(mean).float().to(device)
 std=torch.from_numpy(std).float().to(device)
 
 # lab matrix
-lab_conc=np.concatenate(lab_lst)
+lab_conc=torch.cat(lab_lst)
 
 if right>0:
     lab_conc=lab_conc[left:-right]
@@ -187,13 +177,15 @@ else:
 
 
 # dataset composition
-dataset=np.concatenate([fea_conc,lab_conc.reshape(-1,1)],axis=1)
+dataset=torch.cat([fea_conc,lab_conc.reshape(-1,1)],axis=1)
 
 # shuffling
-np.random.shuffle(dataset)
+# np.random.shuffle(dataset)
+# idx = torch.randperm(dataset.size(0))
+# dataset = dataset[idx].float()
 
 #dataset=torch.from_numpy(dataset).float().to(device)
-dataset=torch.from_numpy(dataset).float()
+# dataset=torch.from_numpy(dataset).float()
 
 # computing N_batches
 N_ex_tr=dataset.shape[0]
