@@ -304,10 +304,3 @@ print('BEST ACC=%f' %(1-min(err_dev_snt_history)))
 text_file.write('BEST_ERR=%f\n' %(min(err_dev_snt_history)))
 text_file.write('BEST_ACC=%f\n' %(1-min(err_dev_snt_history)))
 text_file.close()
-    
-    
-    
-    
-
-
-
