@@ -3,6 +3,7 @@ import os
 import sys
 import numpy as np
 import struct
+import soundfile as sf
 
 def bytes_to_int(bytes: list) -> int:
         result = 0
@@ -37,17 +38,24 @@ def get_flac_duration(filename: str) -> float:
 def collect_data(datadir, traindir, testdir, th=30.0):
   if not os.path.exists(os.path.join(datadir, "train")):
     os.makedirs(os.path.join(datadir, "train"))
+
+  train_files = set()        
   for spk in os.listdir(traindir):
     spkdir = os.path.join(traindir, spk)
     spklength = 0.0
     spkover = False
     for path, _, files in os.walk(spkdir):
       for file in files:
-        if file[-3:] == "txt":
+        if file[-3:] == "txt" or file[-3:] == "lab":
           continue
         flacf = os.path.join(path, file)
+        train_files.add(flacf)
         os.system("ln -sf " + flacf + " " + os.path.join(datadir, "train"))
-        spklength += get_flac_duration(flacf)
+        if flacf[-3:] == "wav":
+            f = sf.SoundFile(flacf)
+            spklength += len(f)/f.samplerate
+        else:
+            spklength += get_flac_duration(flacf)
         if spklength > th:
           spkover = True
           break
@@ -62,11 +70,17 @@ def collect_data(datadir, traindir, testdir, th=30.0):
     spkover = False
     for path, _, files in os.walk(spkdir):
       for file in files:
-        if file[-3:] == "txt":
+        if file[-3:] == "txt" or file[-3:] == "lab":
           continue
         flacf = os.path.join(path, file)
+        if flacf in train_files:
+            continue
         os.system("ln -sf " + flacf + " " + os.path.join(datadir, "test"))
-        spklength += get_flac_duration(flacf)
+        if flacf[-3:] == "wav":
+            f = sf.SoundFile(flacf)
+            spklength += len(f)/f.samplerate
+        else:
+            spklength += get_flac_duration(flacf)
         if spklength > th:
           spkover = True
           break
@@ -115,5 +129,5 @@ if __name__ == "__main__":
   datadir = sys.argv[1]
   traindir = sys.argv[2]
   testdir = sys.argv[3]
-  collect_data(datadir, traindir, testdir)
-  process(datadir)
+  collect_data(datadir, traindir, testdir,15)
+  #process(datadir)

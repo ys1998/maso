@@ -91,9 +91,9 @@ text_file=open(output_file, "w")
 
 # Loading pase
 pase = wf_builder(pase_cfg)
-pase.load_pretrained(pase_model, load_last=True, verbose=False)
+#pase.load_pretrained(pase_model, load_last=True, verbose=False)
 pase.to(device)
-pase.eval()
+pase.train()
 
 # reading the training signals
 print("Waveform reading...")
@@ -121,7 +121,7 @@ for wav_file in dev_lst:
 print('Computing PASE features...')
 fea_pase={}
 for snt_id in fea.keys():
-    pase.eval()
+    pase.train()
     fea_pase[snt_id]=pase(fea[snt_id]).to('cpu').detach()
     fea_pase[snt_id]=fea_pase[snt_id].view(fea_pase[snt_id].shape[1],fea_pase[snt_id].shape[2]).transpose(0,1)
 
@@ -144,7 +144,7 @@ nnet.to(device)
 cost=nn.NLLLoss()
 
 # Optimizer initialization
-optimizer = optim.SGD(nnet.parameters(), lr=lr, momentum=0.0)
+optimizer = optim.SGD(list(nnet.parameters()) + list(pase.parameters()), lr=lr, momentum=0.0)
 
 # Seeds initialization
 np.random.seed(seed)
